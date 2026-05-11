@@ -7,9 +7,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = path.resolve(__dirname, "../data/trips.json");
 
-const prisma = new PrismaClient({
-  datasourceUrl: process.env.DATABASE_URL,
-});
+const prisma = new PrismaClient();
 
 const MODE_MAP = { ASAP: "ASAP", SCHEDULED: "SCHEDULED" };
 const VEHICLE_MAP = { uber_x: "UBER_X", uber_xl: "UBER_XL" };
