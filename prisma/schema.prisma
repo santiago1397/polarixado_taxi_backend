@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TripMode {
+  ASAP
+  SCHEDULED
+}
+
+enum VehicleType {
+  UBER_X
+  UBER_XL
+}
+
+enum TripState {
+  PENDING_PAYMENT
+  CONFIRMED
+  EN_ROUTE
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  STRIPE
+  ZELLE
+  CASH
+  ZELLE_LATER
+  CASHAPP
+}
+
+enum PaymentTiming {
+  NOW
+  LATER
+}
+
+enum PaymentStatus {
+  PENDING
+  PENDING_VERIFICATION
+  PAID
+}
+
+model Trip {
+  id              String        @id
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  vehicleType     VehicleType   @default(UBER_X)
+  mode            TripMode
+  scheduledAt     DateTime?
+  customerName    String
+  customerEmail   String
+  customerPhone   String?
+  originAddress   String
+  originLat       Float
+  originLng       Float
+  destAddress     String
+  destLat         Float
+  destLng         Float
+  routeGeoJSON    Json?
+  distanceKm      Float
+  etaMin          Int
+  fareBase        Float
+  farePerKm       Float
+  fareTotal       Float
+  fareCurrency    String        @default("USD")
+  paymentMethod   PaymentMethod
+  paymentTiming  PaymentTiming
+  paymentStatus   PaymentStatus @default(PENDING)
+  stripeSessionId String?
+  receiptBase64   String?
+  state           TripState     @default(PENDING_PAYMENT)
+  stateHistory    Json
+  reminderSentAt  DateTime?
+}

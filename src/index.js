@@ -21,6 +21,8 @@ app.get("/api/config", (_req, res) => {
     zelleName: process.env.ZELLE_NAME,
     baseFare: Number(process.env.BASE_FARE || 5),
     perKm: Number(process.env.PER_KM || 2),
+    baseFareXl: Number(process.env.BASE_FARE_XL || 8),
+    perKmXl: Number(process.env.PER_KM_XL || 3),
     currency: process.env.CURRENCY || "USD",
   });
 });

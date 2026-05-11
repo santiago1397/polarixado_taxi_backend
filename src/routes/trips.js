@@ -20,11 +20,14 @@ router.post("/", async (req, res) => {
   if (!["ASAP", "SCHEDULED"].includes(mode)) return res.status(400).json({ error: "mode invalid" });
   if (mode === "SCHEDULED" && !scheduledAt) return res.status(400).json({ error: "scheduledAt required" });
 
+  const vehicleType = body.vehicleType || "uber_x";
   const fare = computeFare(distanceKm, {
     baseFare: process.env.BASE_FARE || 5,
     perKm: process.env.PER_KM || 2,
+    baseFareXl: process.env.BASE_FARE_XL || 8,
+    perKmXl: process.env.PER_KM_XL || 3,
     currency: process.env.CURRENCY || "USD",
-  });
+  }, vehicleType);
 
   const method = payment?.method || "cash";
   const timing = payment?.timing || "later";
@@ -45,6 +48,7 @@ router.post("/", async (req, res) => {
   const trip = {
     id: nanoid(10).toUpperCase(),
     createdAt: new Date().toISOString(),
+    vehicleType,
     scheduledAt: mode === "SCHEDULED" ? scheduledAt : null,
     mode,
     customer,
