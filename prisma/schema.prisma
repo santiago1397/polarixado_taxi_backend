@@ -44,8 +44,57 @@ enum PaymentStatus {
   PAID
 }
 
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+}
+
+model Admin {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         AdminRole @default(ADMIN)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Deal {
+  id             String      @id @default(cuid())
+  title          String
+  description    String?
+  imageUrl       String?
+  destination    String
+  destLat        Float
+  destLng        Float
+  price          Float
+  currency       String      @default("USD")
+  passengerCount Int
+  departureAt    DateTime
+  returnAt       DateTime
+  vehicleType    VehicleType @default(UBER_XL)
+  active         Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model Driver {
+  id           String   @id @default(cuid())
+  name         String
+  phone        String   @unique
+  email        String?
+  vehicleMake  String
+  vehicleColor String
+  vehiclePlate String
+  vehicleYear  Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  trips        Trip[]
+}
+
 model Trip {
   id              String        @id
+  groupId         String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   vehicleType     VehicleType   @default(UBER_X)
@@ -68,11 +117,16 @@ model Trip {
   fareTotal       Float
   fareCurrency    String        @default("USD")
   paymentMethod   PaymentMethod
-  paymentTiming  PaymentTiming
+  paymentTiming   PaymentTiming
   paymentStatus   PaymentStatus @default(PENDING)
   stripeSessionId String?
   receiptBase64   String?
   state           TripState     @default(PENDING_PAYMENT)
   stateHistory    Json
   reminderSentAt  DateTime?
+  driverConfirmToken String?
+  driverConfirmedAt  DateTime?
+  notifiedAt         DateTime?
+  driverId        String?
+  driver          Driver?       @relation(fields: [driverId], references: [id])
 }

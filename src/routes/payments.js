@@ -42,7 +42,10 @@ export async function stripeWebhookHandler(req, res) {
         payment: { ...t.payment, status: "paid" },
         stateHistory: [...t.stateHistory, { state: STATES.CONFIRMED, at: new Date().toISOString() }],
       }));
-      if (updated) sendConfirmation(updated).catch((e) => console.error("[mail]", e));
+      if (updated && !updated.notifiedAt) {
+        const stamped = await updateTrip(updated.id, (t) => ({ ...t, notifiedAt: new Date().toISOString() }));
+        sendConfirmation(stamped).catch((e) => console.error("[mail]", e));
+      }
     }
   }
   res.json({ received: true });

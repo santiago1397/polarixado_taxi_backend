@@ -1,14 +1,23 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import tripsRouter from "./routes/trips.js";
 import paymentsRouter, { stripeWebhookHandler } from "./routes/payments.js";
 import adminRouter from "./routes/admin.js";
+import adminAuthRouter from "./routes/adminAuth.js";
+import dealsRouter from "./routes/deals.js";
+import dealBookingsRouter from "./routes/dealBookings.js";
+import driversRouter from "./routes/drivers.js";
 import { startScheduler } from "./services/scheduler.js";
 
 const app = express();
 
-app.use(cors({ origin: process.env.FRONTEND_URL || "*" }));
+app.use(cookieParser());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  credentials: true,
+}));
 
 // Stripe webhook needs raw body; must be declared BEFORE express.json()
 app.post("/api/payments/stripe/webhook", express.raw({ type: "application/json" }), stripeWebhookHandler);
@@ -29,7 +38,11 @@ app.get("/api/config", (_req, res) => {
 
 app.use("/api/trips", tripsRouter);
 app.use("/api/payments", paymentsRouter);
+app.use("/api/admin/auth", adminAuthRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/admin/drivers", driversRouter);
+app.use("/api/deals", dealsRouter);
+app.use("/api/deals", dealBookingsRouter);
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 

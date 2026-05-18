@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export async function listTrips() {
-  return prisma.trip.findMany();
+  return prisma.trip.findMany({ include: { driver: true } });
 }
 
 export async function getTrip(id) {
