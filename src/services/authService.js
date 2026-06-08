@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const COOKIE_NAME = "admin_token";
-const COOKIE_MAX_AGE = 86400;
+const COOKIE_MAX_AGE = 3 * 60 * 60; // 3 hours in seconds
 
 export async function hashPassword(password) {
   return bcrypt.hash(password, 12);
@@ -14,7 +14,7 @@ export async function verifyPassword(password, hash) {
 }
 
 export function signToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "1d" });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: "3h" });
 }
 
 export function verifyToken(token) {
