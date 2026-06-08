@@ -21,19 +21,22 @@ export function verifyToken(token) {
   return jwt.verify(token, JWT_SECRET);
 }
 
+const isProd = process.env.NODE_ENV === "production";
+
 export function setTokenCookie(res, token) {
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: isProd ? "none" : "lax",
+    secure: isProd,
     maxAge: COOKIE_MAX_AGE,
-    secure: process.env.NODE_ENV === "production",
   });
 }
 
 export function clearTokenCookie(res) {
   res.cookie(COOKIE_NAME, "", {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: isProd ? "none" : "lax",
+    secure: isProd,
     maxAge: 0,
   });
 }
