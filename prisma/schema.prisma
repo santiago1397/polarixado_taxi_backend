@@ -14,7 +14,9 @@ enum TripMode {
 
 enum VehicleType {
   UBER_X
+  UBER_COMFORT
   UBER_XL
+  UBER_XXL
 }
 
 enum TripState {
@@ -47,6 +49,12 @@ enum PaymentStatus {
 enum AdminRole {
   SUPER_ADMIN
   ADMIN
+}
+
+enum ConsentMethod {
+  BROWSEWRAP_CLICK
+  EXPLICIT_CHECKBOX
+  ADMIN_OVERRIDE
 }
 
 model Admin {
@@ -92,6 +100,30 @@ model Driver {
   trips        Trip[]
 }
 
+model ConsentLog {
+  id          String        @id @default(cuid())
+  tripId      String
+  trip        Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  channels    String[]
+  consentedAt DateTime      @default(now())
+  method      ConsentMethod
+  textVersion String
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime      @default(now())
+
+  @@index([tripId])
+}
+
+model Config {
+  id            String   @id @default("singleton")
+  vehicleTiers  Json
+  currency      String   @default("USD")
+  zelleHandle   String?
+  zelleName     String?
+  updatedAt     DateTime @updatedAt
+}
+
 model Trip {
   id              String        @id
   groupId         String?
@@ -110,10 +142,11 @@ model Trip {
   destLat         Float
   destLng         Float
   routeGeoJSON    Json?
-  distanceKm      Float
+  distanceMiles   Float
   etaMin          Int
   fareBase        Float
-  farePerKm       Float
+  farePerMile     Float
+  fareTime        Float         @default(0)
   fareTotal       Float
   fareCurrency    String        @default("USD")
   paymentMethod   PaymentMethod
@@ -129,4 +162,5 @@ model Trip {
   notifiedAt         DateTime?
   driverId        String?
   driver          Driver?       @relation(fields: [driverId], references: [id])
+  consentLogs     ConsentLog[]
 }

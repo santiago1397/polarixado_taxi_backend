@@ -53,16 +53,17 @@ function renderTicketHtml(trip, qrDataUrl, opts = {}) {
     ${cta}
     <p><b>When:</b> ${when}</p>
     <p><b>From:</b> ${origin.address}<br/><b>To:</b> ${destination.address}</p>
-    <p><b>Distance:</b> ${trip.distanceKm.toFixed(2)} km &nbsp; <b>ETA:</b> ${Math.round(trip.etaMin)} min</p>
+    <p><b>Distance:</b> ${trip.distanceMiles.toFixed(2)} mi &nbsp; <b>ETA:</b> ${Math.round(trip.etaMin)} min</p>
     <hr/>
     <h3>Fare breakdown</h3>
     <table style="width:100%;border-collapse:collapse">
       <tr><td>Base</td><td align="right">${fmtMoney(fare.base, fare.currency)}</td></tr>
-      <tr><td>Distance (${trip.distanceKm.toFixed(2)} km)</td><td align="right">${fmtMoney(fare.perKmTotal, fare.currency)}</td></tr>
+      <tr><td>Distance (${trip.distanceMiles.toFixed(2)} mi)</td><td align="right">${fmtMoney(fare.perMileTotal, fare.currency)}</td></tr>
+      <tr><td>Time (${Math.round(trip.etaMin)} min)</td><td align="right">${fmtMoney(fare.perMinuteTotal, fare.currency)}</td></tr>
       <tr><td><b>Total</b></td><td align="right"><b>${fmtMoney(fare.total, fare.currency)}</b></td></tr>
     </table>
     <p><b>Payment:</b> ${payment.method} (${payment.timing}) — <i>${payment.status}</i></p>
-    <p><b>Customer:</b> ${customer.name} &lt;${customer.email}&gt; ${customer.phone || ""}</p>
+    <p><b>Customer:</b> ${customer.name}${customer.email ? ` &lt;${customer.email}&gt;` : ""}${customer.phone ? ` ${customer.phone}` : ""}</p>
     ${qrDataUrl ? `<div style="text-align:center;margin-top:16px"><img src="${qrDataUrl}" alt="Trip QR" style="width:180px;height:180px"/><br/><small>Scan to view trip</small></div>` : ""}
   </div>`;
 }

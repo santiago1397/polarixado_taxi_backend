@@ -14,11 +14,21 @@ export async function verifyPassword(password, hash) {
 }
 
 export function signToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "3h" });
+  const t = jwt.sign(payload, JWT_SECRET, { expiresIn: "3h" });
+  console.log(`[auth] signToken id=${payload.id} role=${payload.role} iat=${jwt.decode(t).iat} exp=${jwt.decode(t).exp}`);
+  return t;
 }
 
 export function verifyToken(token) {
-  return jwt.verify(token, JWT_SECRET);
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    console.log(`[auth] verifyToken OK id=${decoded.id} role=${decoded.role} exp=${decoded.exp}`);
+    return decoded;
+  } catch (e) {
+    const preview = token ? token.slice(0, 16) + "..." : "(empty)";
+    console.log(`[auth] verifyToken FAILED err=${e.name}:${e.message} token=${preview}`);
+    throw e;
+  }
 }
 
 const isProd = process.env.NODE_ENV === "production";
@@ -42,7 +52,12 @@ export function clearTokenCookie(res) {
 }
 
 export function getTokenFromRequest(req) {
-  return req.cookies?.[COOKIE_NAME] || req.header("Authorization")?.replace("Bearer ", "");
+  const fromCookie = req.cookies?.[COOKIE_NAME];
+  const fromAuth = req.header("Authorization")?.replace("Bearer ", "");
+  const token = fromCookie || fromAuth;
+  const cookieNames = req.cookies ? Object.keys(req.cookies).join(",") : "(none)";
+  console.log(`[auth] getTokenFromRequest path=${req.originalUrl} cookies=[${cookieNames}] authHeader=${req.header("Authorization") ? "yes" : "no"} -> ${token ? "token found" : "NO TOKEN"}`);
+  return token;
 }
 
 export { COOKIE_NAME };

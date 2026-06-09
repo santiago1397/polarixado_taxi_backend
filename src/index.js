@@ -9,11 +9,27 @@ import adminAuthRouter from "./routes/adminAuth.js";
 import dealsRouter from "./routes/deals.js";
 import dealBookingsRouter from "./routes/dealBookings.js";
 import driversRouter from "./routes/drivers.js";
+import messagesRouter from "./routes/messages.js";
 import { startScheduler } from "./services/scheduler.js";
+import { getConfig } from "./services/configRepo.js";
 
 const app = express();
 
+process.on("unhandledRejection", (e) => console.error("[unhandledRejection]", e));
+process.on("uncaughtException", (e) => console.error("[uncaughtException]", e));
+
 app.use(cookieParser());
+
+app.use((req, res, next) => {
+  const hasCookie = !!req.headers.cookie;
+  const origin = req.headers.origin || "-";
+  const ts = new Date().toISOString();
+  res.on("finish", () => {
+    console.log(`[${ts}] ${req.method} ${req.originalUrl} -> ${res.statusCode} origin=${origin} cookie=${hasCookie ? "yes" : "no"}`);
+  });
+  next();
+});
+
 const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:5173")
   .split(",")
   .map((s) => s.trim())
@@ -33,16 +49,19 @@ app.post("/api/payments/stripe/webhook", express.raw({ type: "application/json" 
 
 app.use(express.json({ limit: "10mb" })); // base64 receipts
 
-app.get("/api/config", (_req, res) => {
-  res.json({
-    zelleHandle: process.env.ZELLE_HANDLE,
-    zelleName: process.env.ZELLE_NAME,
-    baseFare: Number(process.env.BASE_FARE || 5),
-    perKm: Number(process.env.PER_KM || 2),
-    baseFareXl: Number(process.env.BASE_FARE_XL || 8),
-    perKmXl: Number(process.env.PER_KM_XL || 3),
-    currency: process.env.CURRENCY || "USD",
-  });
+app.get("/api/config", async (_req, res) => {
+  try {
+    const cfg = await getConfig();
+    res.json({
+      vehicleTiers: cfg.vehicleTiers,
+      currency: cfg.currency,
+      zelleHandle: cfg.zelleHandle,
+      zelleName: cfg.zelleName,
+    });
+  } catch (e) {
+    console.error("[config]", e);
+    res.status(500).json({ error: "config unavailable" });
+  }
 });
 
 app.use("/api/trips", tripsRouter);
@@ -52,8 +71,15 @@ app.use("/api/admin", adminRouter);
 app.use("/api/admin/drivers", driversRouter);
 app.use("/api/deals", dealsRouter);
 app.use("/api/deals", dealBookingsRouter);
+app.use("/api/messages", messagesRouter);
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
+app.use((err, _req, res, _next) => {
+  console.error("[unhandled]", err);
+  if (res.headersSent) return;
+  res.status(500).json({ error: "internal_error" });
+});
 
 const port = Number(process.env.PORT || 4000);
 app.listen(port, () => {

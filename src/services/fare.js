@@ -1,11 +1,11 @@
-export function computeFare(distanceKm, { baseFare, perKm, baseFareXl, perKmXl, currency }, vehicleType = "uber_x") {
-  const isXl = vehicleType === "uber_xl";
-  const bf = isXl ? (baseFareXl || baseFare * 1.6) : Number(baseFare);
-  const pk = isXl ? (perKmXl || perKm * 1.5) : Number(perKm);
-  const cur = currency || "USD";
+export function computeFare(distanceMiles, etaMin, vehicleTiers, vehicleType, currency = "USD") {
+  const tier = vehicleTiers?.[vehicleType];
+  if (!tier) throw new Error(`unknown vehicle type: ${vehicleType}`);
 
-  const base = Number(bf);
-  const perKmTotal = Number((distanceKm * pk).toFixed(2));
-  const total = Number((base + perKmTotal).toFixed(2));
-  return { base, perKmTotal, total, currency: cur };
+  const base = Number(tier.baseFare);
+  const perMileTotal = Number((Number(distanceMiles) * Number(tier.perMile)).toFixed(2));
+  const perMinuteTotal = Number((Number(etaMin || 0) * Number(tier.perMinute)).toFixed(2));
+  const total = Number((base + perMileTotal + perMinuteTotal).toFixed(2));
+
+  return { base, perMileTotal, perMinuteTotal, total, currency };
 }

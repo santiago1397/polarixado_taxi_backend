@@ -1,34 +1,36 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
-import { createTrip, getTrip, updateTrip } from "../services/tripRepo.js";
+import { createTrip, getTrip, updateTrip, createTripWithConsent } from "../services/tripRepo.js";
 import { getDefaultDriver } from "../services/driverRepo.js";
 import { computeFare } from "../services/fare.js";
 import { canTransition, STATES } from "../services/stateMachine.js";
 import { sendConfirmation } from "../services/mailer.js";
+import { parseConsent } from "../services/consent.js";
+import { getConfig } from "../services/configRepo.js";
 
 const router = Router();
 
 router.post("/", async (req, res) => {
   const body = req.body || {};
   const {
-    customer, origin, destination, routeGeoJSON, distanceKm, etaMin,
-    mode, scheduledAt, payment,
+    customer, origin, destination, routeGeoJSON, distanceMiles, etaMin,
+    mode, scheduledAt, payment, receiptBase64,
   } = body;
 
-  if (!customer?.name || !customer?.email) return res.status(400).json({ error: "customer name/email required" });
+  if (!customer?.name || !customer?.phone) return res.status(400).json({ error: "customer name/phone required" });
   if (!origin?.lng || !destination?.lng) return res.status(400).json({ error: "origin/destination required" });
-  if (typeof distanceKm !== "number") return res.status(400).json({ error: "distanceKm required" });
+  if (typeof distanceMiles !== "number") return res.status(400).json({ error: "distanceMiles required" });
   if (!["ASAP", "SCHEDULED"].includes(mode)) return res.status(400).json({ error: "mode invalid" });
   if (mode === "SCHEDULED" && !scheduledAt) return res.status(400).json({ error: "scheduledAt required" });
 
-  const vehicleType = body.vehicleType || "uber_x";
-  const fare = computeFare(distanceKm, {
-    baseFare: process.env.BASE_FARE || 5,
-    perKm: process.env.PER_KM || 2,
-    baseFareXl: process.env.BASE_FARE_XL || 8,
-    perKmXl: process.env.PER_KM_XL || 3,
-    currency: process.env.CURRENCY || "USD",
-  }, vehicleType);
+  const consentParsed = parseConsent(body.consent, req);
+  if (consentParsed.error) return res.status(400).json({ error: consentParsed.error });
+  const consent = consentParsed.value;
+
+  const cfg = await getConfig();
+  const vehicleType = (body.vehicleType || "UBER_X").toUpperCase();
+  if (!cfg.vehicleTiers?.[vehicleType]) return res.status(400).json({ error: `unknown vehicleType ${vehicleType}` });
+  const fare = computeFare(distanceMiles, etaMin || 0, cfg.vehicleTiers, vehicleType, cfg.currency);
 
   const method = payment?.method || "cash";
   const timing = payment?.timing || "later";
@@ -56,10 +58,10 @@ router.post("/", async (req, res) => {
     origin,
     destination,
     routeGeoJSON: routeGeoJSON || null,
-    distanceKm,
+    distanceMiles,
     etaMin: etaMin || 0,
     fare,
-    payment: { method, timing, status: paymentStatus },
+    payment: { method, timing, status: paymentStatus, ...(receiptBase64 ? { receiptBase64 } : {}) },
     state,
     stateHistory: [{ state, at: new Date().toISOString() }],
     reminderSentAt: null,
@@ -68,7 +70,7 @@ router.post("/", async (req, res) => {
     notifiedAt: null,
   };
 
-  await createTrip(trip);
+  await createTripWithConsent(trip, consent);
 
   // Auto-assign the default driver
   const defaultDriver = await getDefaultDriver();
@@ -147,7 +149,8 @@ router.post("/:id/receipt", async (req, res) => {
   if (!receiptBase64) return res.status(400).json({ error: "receiptBase64 required" });
   const trip = await getTrip(req.params.id);
   if (!trip) return res.status(404).json({ error: "not found" });
-  if (trip.payment.method !== "zelle") return res.status(400).json({ error: "not a zelle trip" });
+  const method = String(trip.payment.method || "").toLowerCase();
+  if (method !== "zelle" && method !== "zelle_later") return res.status(400).json({ error: "not a zelle trip" });
   const updated = await updateTrip(trip.id, (t) => ({
     ...t,
     payment: { ...t.payment, receiptBase64, status: "pending_verification" },

@@ -2,6 +2,7 @@ import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../src/services/authService.js";
 import { getDriver } from "../src/services/driverRepo.js";
+import { DEFAULT_VEHICLE_TIERS } from "../src/config/defaultTiers.js";
 
 const prisma = new PrismaClient();
 
@@ -25,6 +26,19 @@ async function main() {
     });
     console.log(`Created SUPER_ADMIN: ${admin.email}`);
   }
+
+  await prisma.config.upsert({
+    where: { id: "singleton" },
+    update: {},
+    create: {
+      id: "singleton",
+      vehicleTiers: DEFAULT_VEHICLE_TIERS,
+      currency: process.env.CURRENCY || "USD",
+      zelleHandle: process.env.ZELLE_HANDLE || null,
+      zelleName: process.env.ZELLE_NAME || null,
+    },
+  });
+  console.log("Config singleton ensured.");
 
   const driverCount = await prisma.driver.count();
   if (driverCount === 0) {

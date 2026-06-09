@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
 import { getDeal } from "../services/dealRepo.js";
-import { createTrip, updateTrip } from "../services/tripRepo.js";
+import { updateTrip, createTripWithConsent } from "../services/tripRepo.js";
 import { getDefaultDriver } from "../services/driverRepo.js";
 import { computeFare } from "../services/fare.js";
 import { STATES } from "../services/stateMachine.js";
 import { sendConfirmation } from "../services/mailer.js";
+import { parseConsent } from "../services/consent.js";
+import { getConfig } from "../services/configRepo.js";
 
 const router = Router();
 
@@ -14,26 +16,27 @@ router.post("/:id/book", async (req, res) => {
   if (!deal) return res.status(404).json({ error: "deal not found" });
   if (!deal.active) return res.status(400).json({ error: "deal no longer active" });
 
-  const { customer, origin, distanceKmOutbound, etaMinOutbound, distanceKmReturn, etaMinReturn, departureAt: userDepartAt, returnAt: userReturnAt } = req.body || {};
-  if (!customer?.name || !customer?.email) return res.status(400).json({ error: "customer name/email required" });
+  const { customer, origin, distanceMilesOutbound, etaMinOutbound, distanceMilesReturn, etaMinReturn, departureAt: userDepartAt, returnAt: userReturnAt } = req.body || {};
+  if (!customer?.name || !customer?.phone) return res.status(400).json({ error: "customer name/phone required" });
   if (!origin?.address || !origin?.lat || !origin?.lng) return res.status(400).json({ error: "origin required" });
-  if (typeof distanceKmOutbound !== "number" || typeof distanceKmReturn !== "number") {
-    return res.status(400).json({ error: "distanceKmOutbound and distanceKmReturn required" });
+  if (typeof distanceMilesOutbound !== "number" || typeof distanceMilesReturn !== "number") {
+    return res.status(400).json({ error: "distanceMilesOutbound and distanceMilesReturn required" });
   }
+
+  const consentParsed = parseConsent(req.body.consent, req);
+  if (consentParsed.error) return res.status(400).json({ error: consentParsed.error });
+  const consent = consentParsed.value;
 
   const departAt = userDepartAt ? new Date(userDepartAt) : deal.departureAt;
   const returnAt = userReturnAt ? new Date(userReturnAt) : deal.returnAt;
 
-  const fareConfig = {
-    baseFare: Number(process.env.BASE_FARE || 5),
-    perKm: Number(process.env.PER_KM || 2),
-    baseFareXl: Number(process.env.BASE_FARE_XL || 8),
-    perKmXl: Number(process.env.PER_KM_XL || 3),
-    currency: deal.currency || "USD",
-  };
-
-  const outboundFare = computeFare(distanceKmOutbound, fareConfig, deal.vehicleType);
-  const returnFare = computeFare(distanceKmReturn, fareConfig, deal.vehicleType);
+  const cfg = await getConfig();
+  if (!cfg.vehicleTiers?.[deal.vehicleType]) {
+    return res.status(400).json({ error: `unknown vehicleType ${deal.vehicleType}` });
+  }
+  const currency = deal.currency || cfg.currency || "USD";
+  const outboundFare = computeFare(distanceMilesOutbound, etaMinOutbound || 0, cfg.vehicleTiers, deal.vehicleType, currency);
+  const returnFare = computeFare(distanceMilesReturn, etaMinReturn || 0, cfg.vehicleTiers, deal.vehicleType, currency);
 
   const payment = req.body.payment || { method: "cash", timing: "later" };
   let paymentStatus = "pending";
@@ -62,41 +65,35 @@ router.post("/:id/book", async (req, res) => {
   };
 
   const outboundTrip = {
+    ...tripDefaults,
     id: nanoid(10).toUpperCase(),
     groupId,
     createdAt: new Date().toISOString(),
     scheduledAt: departAt.toISOString(),
-    originAddress: origin.address,
-    originLat: origin.lat,
-    originLng: origin.lng,
-    destAddress: deal.destination,
-    destLat: deal.destLat,
-    destLng: deal.destLng,
-    distanceKm: distanceKmOutbound,
+    origin: { address: origin.address, lat: origin.lat, lng: origin.lng },
+    destination: { address: deal.destination, lat: deal.destLat, lng: deal.destLng },
+    routeGeoJSON: null,
+    distanceMiles: distanceMilesOutbound,
     etaMin: etaMinOutbound || 0,
-    ...outboundFare,
-    ...tripDefaults,
+    fare: outboundFare,
   };
 
   const returnTrip = {
+    ...tripDefaults,
     id: nanoid(10).toUpperCase(),
     groupId,
     createdAt: new Date().toISOString(),
     scheduledAt: returnAt.toISOString(),
-    originAddress: deal.destination,
-    originLat: deal.destLat,
-    originLng: deal.destLng,
-    destAddress: origin.address,
-    destLat: origin.lat,
-    destLng: origin.lng,
-    distanceKm: distanceKmReturn,
+    origin: { address: deal.destination, lat: deal.destLat, lng: deal.destLng },
+    destination: { address: origin.address, lat: origin.lat, lng: origin.lng },
+    routeGeoJSON: null,
+    distanceMiles: distanceMilesReturn,
     etaMin: etaMinReturn || 0,
-    ...returnFare,
-    ...tripDefaults,
+    fare: returnFare,
   };
 
-  await createTrip(outboundTrip);
-  await createTrip(returnTrip);
+  await createTripWithConsent(outboundTrip, consent);
+  await createTripWithConsent(returnTrip, consent);
 
   // Auto-assign the default driver to both trips
   const defaultDriver = await getDefaultDriver();
