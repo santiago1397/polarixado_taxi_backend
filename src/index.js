@@ -57,6 +57,9 @@ app.get("/api/config", async (_req, res) => {
       currency: cfg.currency,
       zelleHandle: cfg.zelleHandle,
       zelleName: cfg.zelleName,
+      namedPlaces: cfg.namedPlaces || [],
+      zones: cfg.zones || [],
+      timeOfDaySurcharge: cfg.timeOfDaySurcharge || [],
     });
   } catch (e) {
     console.error("[config]", e);

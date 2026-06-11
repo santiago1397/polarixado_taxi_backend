@@ -1,6 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 export async function findByEmail(email) {
   return prisma.admin.findUnique({ where: { email } });

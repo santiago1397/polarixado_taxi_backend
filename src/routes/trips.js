@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 import { createTrip, getTrip, updateTrip, createTripWithConsent } from "../services/tripRepo.js";
 import { getDefaultDriver } from "../services/driverRepo.js";
 import { computeFare } from "../services/fare.js";
+import { detectTolls } from "../services/tollDetector.js";
 import { canTransition, STATES } from "../services/stateMachine.js";
 import { sendConfirmation } from "../services/mailer.js";
 import { parseConsent } from "../services/consent.js";
@@ -30,7 +31,26 @@ router.post("/", async (req, res) => {
   const cfg = await getConfig();
   const vehicleType = (body.vehicleType || "UBER_X").toUpperCase();
   if (!cfg.vehicleTiers?.[vehicleType]) return res.status(400).json({ error: `unknown vehicleType ${vehicleType}` });
-  const fare = computeFare(distanceMiles, etaMin || 0, cfg.vehicleTiers, vehicleType, cfg.currency);
+
+  const tollAmount = detectTolls(routeGeoJSON, origin, destination, cfg.tollRoads);
+
+  const fare = computeFare({
+    vehicleTiers: cfg.vehicleTiers,
+    vehicleType,
+    distanceMiles,
+    etaMin: etaMin || 0,
+    origin,
+    destination,
+    mode,
+    scheduledAt,
+    createdAt: new Date().toISOString(),
+    zones: cfg.zones,
+    namedPlaces: cfg.namedPlaces,
+    timeOfDaySurcharge: cfg.timeOfDaySurcharge,
+    isDeal: false,
+    currency: cfg.currency,
+    tollAmount,
+  });
 
   const method = payment?.method || "cash";
   const timing = payment?.timing || "later";

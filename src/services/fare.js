@@ -1,11 +1,22 @@
-export function computeFare(distanceMiles, etaMin, vehicleTiers, vehicleType, currency = "USD") {
-  const tier = vehicleTiers?.[vehicleType];
-  if (!tier) throw new Error(`unknown vehicle type: ${vehicleType}`);
+import { computeFareBreakdown } from "./fareRules.js";
 
-  const base = Number(tier.baseFare);
-  const perMileTotal = Number((Number(distanceMiles) * Number(tier.perMile)).toFixed(2));
-  const perMinuteTotal = Number((Number(etaMin || 0) * Number(tier.perMinute)).toFixed(2));
-  const total = Number((base + perMileTotal + perMinuteTotal).toFixed(2));
+const round2 = (n) => Number(Number(n).toFixed(2));
 
-  return { base, perMileTotal, perMinuteTotal, total, currency };
+export function computeFare(input) {
+  const r = computeFareBreakdown({ ...input, tollAmount: input.tollAmount ?? 0 });
+  return {
+    base: r.base,
+    perMileTotal: r.perMileTotal,
+    perMinuteTotal: 0,
+    ewrSurcharge: r.ewrSurcharge,
+    timeOfDaySurcharge: r.timeOfDaySurcharge,
+    tollAmount: r.tollAmount,
+    total: r.total,
+    currency: r.currency,
+    breakdown: r.breakdown,
+    bandRate: r.bandRate,
+    zoneId: r.zoneId,
+    namedPlaceId: r.namedPlaceId,
+    timeOfDayWindowId: r.timeOfDayWindowId,
+  };
 }

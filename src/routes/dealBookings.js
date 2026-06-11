@@ -35,8 +35,35 @@ router.post("/:id/book", async (req, res) => {
     return res.status(400).json({ error: `unknown vehicleType ${deal.vehicleType}` });
   }
   const currency = deal.currency || cfg.currency || "USD";
-  const outboundFare = computeFare(distanceMilesOutbound, etaMinOutbound || 0, cfg.vehicleTiers, deal.vehicleType, currency);
-  const returnFare = computeFare(distanceMilesReturn, etaMinReturn || 0, cfg.vehicleTiers, deal.vehicleType, currency);
+  const fareOpts = {
+    vehicleTiers: cfg.vehicleTiers,
+    vehicleType: deal.vehicleType,
+    zones: cfg.zones,
+    namedPlaces: cfg.namedPlaces,
+    timeOfDaySurcharge: cfg.timeOfDaySurcharge,
+    isDeal: true,
+    currency,
+  };
+  const outboundOrigin = { address: origin.address, lat: origin.lat, lng: origin.lng };
+  const outboundDest = { address: deal.destination, lat: deal.destLat, lng: deal.destLng };
+  const outboundFare = computeFare({
+    ...fareOpts,
+    distanceMiles: distanceMilesOutbound,
+    etaMin: etaMinOutbound || 0,
+    origin: outboundOrigin,
+    destination: outboundDest,
+    mode: "SCHEDULED",
+    scheduledAt: departAt.toISOString(),
+  });
+  const returnFare = computeFare({
+    ...fareOpts,
+    distanceMiles: distanceMilesReturn,
+    etaMin: etaMinReturn || 0,
+    origin: outboundDest,
+    destination: outboundOrigin,
+    mode: "SCHEDULED",
+    scheduledAt: returnAt.toISOString(),
+  });
 
   const payment = req.body.payment || { method: "cash", timing: "later" };
   let paymentStatus = "pending";

@@ -1,7 +1,5 @@
 import "dotenv/config";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 const toDate = (v) => (v ? new Date(v) : null);
 const toIso = (v) => (v instanceof Date ? v.toISOString() : v || null);
@@ -30,6 +28,9 @@ function toDb(d) {
     fareBase: d.fare?.base,
     farePerMile: d.fare?.perMileTotal,
     fareTime: d.fare?.perMinuteTotal ?? 0,
+    fareEwrSurcharge: d.fare?.ewrSurcharge ?? 0,
+    fareTimeOfDaySurcharge: d.fare?.timeOfDaySurcharge ?? 0,
+    fareTollAmount: d.fare?.tollAmount ?? 0,
     fareTotal: d.fare?.total,
     fareCurrency: d.fare?.currency ?? "USD",
     paymentMethod: upper(d.payment?.method),
@@ -67,6 +68,9 @@ function fromDb(row) {
       base: row.fareBase,
       perMileTotal: row.farePerMile,
       perMinuteTotal: row.fareTime,
+      ewrSurcharge: row.fareEwrSurcharge ?? 0,
+      timeOfDaySurcharge: row.fareTimeOfDaySurcharge ?? 0,
+      tollAmount: row.fareTollAmount ?? 0,
       total: row.fareTotal,
       currency: row.fareCurrency,
     },

@@ -17,6 +17,7 @@ enum VehicleType {
   UBER_COMFORT
   UBER_XL
   UBER_XXL
+  BLACK_CAR
 }
 
 enum TripState {
@@ -116,12 +117,16 @@ model ConsentLog {
 }
 
 model Config {
-  id            String   @id @default("singleton")
-  vehicleTiers  Json
-  currency      String   @default("USD")
-  zelleHandle   String?
-  zelleName     String?
-  updatedAt     DateTime @updatedAt
+  id                  String   @id @default("singleton")
+  vehicleTiers        Json
+  currency            String   @default("USD")
+  zelleHandle         String?
+  zelleName           String?
+  namedPlaces         Json?    @default("null")
+  zones               Json?    @default("null")
+  timeOfDaySurcharge  Json?    @default("null")
+  tollRoads           Json?    @default("null")
+  updatedAt           DateTime @updatedAt
 }
 
 model Trip {
@@ -144,11 +149,14 @@ model Trip {
   routeGeoJSON    Json?
   distanceMiles   Float
   etaMin          Int
-  fareBase        Float
-  farePerMile     Float
-  fareTime        Float         @default(0)
-  fareTotal       Float
-  fareCurrency    String        @default("USD")
+  fareBase                Float
+  farePerMile             Float
+  fareTime                Float         @default(0)
+  fareEwrSurcharge        Float         @default(0)
+  fareTimeOfDaySurcharge  Float         @default(0)
+  fareTollAmount          Float         @default(0)
+  fareTotal               Float
+  fareCurrency            String        @default("USD")
   paymentMethod   PaymentMethod
   paymentTiming   PaymentTiming
   paymentStatus   PaymentStatus @default(PENDING)

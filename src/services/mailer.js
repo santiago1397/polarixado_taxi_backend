@@ -20,7 +20,9 @@ function getTransporter() {
 }
 
 function fromAddress() {
-  return process.env.MAIL_FROM || `"${process.env.DRIVER_NAME || "Taxi"}" <no-reply@localhost>`;
+  if (process.env.MAIL_FROM) return process.env.MAIL_FROM;
+  if (process.env.SENDGRID_SENDER_EMAIL) return `"${process.env.DRIVER_NAME || "Taxi"}" <${process.env.SENDGRID_SENDER_EMAIL}>`;
+  return `"${process.env.DRIVER_NAME || "Taxi"}" <no-reply@localhost>`;
 }
 
 function apiBase() {
@@ -45,6 +47,18 @@ function renderTicketHtml(trip, qrDataUrl, opts = {}) {
          <b>Driver status:</b> ${trip.driverConfirmedAt ? `Confirmed at ${new Date(trip.driverConfirmedAt).toLocaleString()}` : "NOT YET CONFIRMED"}
        </p>`
     : "";
+
+  // Build fare breakdown rows from the new shape (with old-shape backward compat).
+  const breakdown = Array.isArray(fare.breakdown) && fare.breakdown.length
+    ? fare.breakdown
+    : legacyBreakdown(trip);
+
+  const breakdownRows = breakdown.map((row) => {
+    const weight = row.total ? `<b>${fmtMoney(row.value, fare.currency)}</b>` : fmtMoney(row.value, fare.currency);
+    const cell = row.total ? `<td><b>${row.label}</b></td><td align="right">${weight}</td>` : `<td>${row.label}</td><td align="right">${weight}</td>`;
+    return `<tr>${cell}</tr>`;
+  }).join("");
+
   return `
   <div style="font-family:system-ui,Arial,sans-serif;max-width:560px;margin:auto;border:1px solid #ddd;border-radius:12px;padding:24px">
     <h2 style="margin:0 0 8px">${opts.heading || "Trip Confirmed"}</h2>
@@ -57,15 +71,25 @@ function renderTicketHtml(trip, qrDataUrl, opts = {}) {
     <hr/>
     <h3>Fare breakdown</h3>
     <table style="width:100%;border-collapse:collapse">
-      <tr><td>Base</td><td align="right">${fmtMoney(fare.base, fare.currency)}</td></tr>
-      <tr><td>Distance (${trip.distanceMiles.toFixed(2)} mi)</td><td align="right">${fmtMoney(fare.perMileTotal, fare.currency)}</td></tr>
-      <tr><td>Time (${Math.round(trip.etaMin)} min)</td><td align="right">${fmtMoney(fare.perMinuteTotal, fare.currency)}</td></tr>
-      <tr><td><b>Total</b></td><td align="right"><b>${fmtMoney(fare.total, fare.currency)}</b></td></tr>
+      ${breakdownRows}
     </table>
     <p><b>Payment:</b> ${payment.method} (${payment.timing}) — <i>${payment.status}</i></p>
     <p><b>Customer:</b> ${customer.name}${customer.email ? ` &lt;${customer.email}&gt;` : ""}${customer.phone ? ` ${customer.phone}` : ""}</p>
     ${qrDataUrl ? `<div style="text-align:center;margin-top:16px"><img src="${qrDataUrl}" alt="Trip QR" style="width:180px;height:180px"/><br/><small>Scan to view trip</small></div>` : ""}
   </div>`;
+}
+
+function legacyBreakdown(trip) {
+  const f = trip.fare || {};
+  const rows = [
+    { label: "Base", value: f.base ?? 0 },
+    { label: `Distance (${trip.distanceMiles.toFixed(2)} mi)`, value: f.perMileTotal ?? 0 },
+  ];
+  if ((f.perMinuteTotal ?? 0) > 0) rows.push({ label: `Time (${Math.round(trip.etaMin || 0)} min)`, value: f.perMinuteTotal });
+  if ((f.ewrSurcharge ?? 0) > 0) rows.push({ label: "Newark Airport Surcharge", value: f.ewrSurcharge });
+  if ((f.timeOfDaySurcharge ?? 0) > 0) rows.push({ label: "Time-of-day surcharge", value: f.timeOfDaySurcharge });
+  rows.push({ label: "Total", value: f.total ?? 0, total: true });
+  return rows;
 }
 
 async function makeQr(trip) {

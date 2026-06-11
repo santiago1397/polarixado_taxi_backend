@@ -2,7 +2,12 @@ import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../src/services/authService.js";
 import { getDriver } from "../src/services/driverRepo.js";
-import { DEFAULT_VEHICLE_TIERS } from "../src/config/defaultTiers.js";
+import {
+  DEFAULT_VEHICLE_TIERS,
+  DEFAULT_NAMED_PLACES,
+  DEFAULT_ZONES,
+  DEFAULT_TIME_OF_DAY_SURCHARGE,
+} from "../src/config/defaultTiers.js";
 
 const prisma = new PrismaClient();
 
@@ -29,13 +34,21 @@ async function main() {
 
   await prisma.config.upsert({
     where: { id: "singleton" },
-    update: {},
+    update: {
+      vehicleTiers: DEFAULT_VEHICLE_TIERS,
+      namedPlaces: DEFAULT_NAMED_PLACES,
+      zones: DEFAULT_ZONES,
+      timeOfDaySurcharge: DEFAULT_TIME_OF_DAY_SURCHARGE,
+    },
     create: {
       id: "singleton",
       vehicleTiers: DEFAULT_VEHICLE_TIERS,
       currency: process.env.CURRENCY || "USD",
       zelleHandle: process.env.ZELLE_HANDLE || null,
       zelleName: process.env.ZELLE_NAME || null,
+      namedPlaces: DEFAULT_NAMED_PLACES,
+      zones: DEFAULT_ZONES,
+      timeOfDaySurcharge: DEFAULT_TIME_OF_DAY_SURCHARGE,
     },
   });
   console.log("Config singleton ensured.");
