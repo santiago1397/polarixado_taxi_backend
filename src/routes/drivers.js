@@ -17,19 +17,20 @@ router.get("/:id", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-  const { name, phone, vehicleMake, vehicleColor, vehiclePlate, vehicleYear } = req.body || {};
+  const { name, phone, email, vehicleMake, vehicleColor, vehiclePlate, vehicleYear } = req.body || {};
   if (!name || !phone || !vehicleMake || !vehicleColor || !vehiclePlate) {
     return res.status(400).json({ error: "name, phone, vehicleMake, vehicleColor, vehiclePlate required" });
   }
-  const driver = await createDriver({ name, phone, vehicleMake, vehicleColor, vehiclePlate, vehicleYear: vehicleYear || null });
+  const driver = await createDriver({ name, phone, email: email || null, vehicleMake, vehicleColor, vehiclePlate, vehicleYear: vehicleYear || null });
   res.json(driver);
 });
 
 router.patch("/:id", async (req, res) => {
-  const { name, phone, vehicleMake, vehicleColor, vehiclePlate, vehicleYear } = req.body || {};
+  const { name, phone, email, vehicleMake, vehicleColor, vehiclePlate, vehicleYear } = req.body || {};
   const data = {};
   if (name !== undefined) data.name = name;
   if (phone !== undefined) data.phone = phone;
+  if (email !== undefined) data.email = email;
   if (vehicleMake !== undefined) data.vehicleMake = vehicleMake;
   if (vehicleColor !== undefined) data.vehicleColor = vehicleColor;
   if (vehiclePlate !== undefined) data.vehiclePlate = vehiclePlate;

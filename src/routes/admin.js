@@ -125,6 +125,9 @@ router.get("/config", async (_req, res) => {
     namedPlaces: cfg.namedPlaces || [],
     zones: cfg.zones || [],
     timeOfDaySurcharge: cfg.timeOfDaySurcharge || [],
+    whatsappEnabled: cfg.whatsappEnabled ?? false,
+    whatsappRecipientPhone: cfg.whatsappRecipientPhone || "",
+    whatsappRecipientName: cfg.whatsappRecipientName || "",
     updatedAt: cfg.updatedAt,
   });
 });
@@ -204,7 +207,7 @@ function validateTimeOfDayWindow(w, i) {
 }
 
 router.put("/config", requireRole("SUPER_ADMIN"), async (req, res) => {
-  const { vehicleTiers, currency, zelleHandle, zelleName, namedPlaces, zones, timeOfDaySurcharge } = req.body || {};
+  const { vehicleTiers, currency, zelleHandle, zelleName, namedPlaces, zones, timeOfDaySurcharge, whatsappEnabled, whatsappRecipientPhone, whatsappRecipientName } = req.body || {};
 
   if (vehicleTiers !== undefined) {
     if (typeof vehicleTiers !== "object" || vehicleTiers === null) {
@@ -254,6 +257,12 @@ router.put("/config", requireRole("SUPER_ADMIN"), async (req, res) => {
     }
   }
 
+  if (whatsappRecipientPhone !== undefined && whatsappRecipientPhone !== "") {
+    if (!/^\+[1-9]\d{7,14}$/.test(whatsappRecipientPhone)) {
+      return res.status(400).json({ error: "whatsappRecipientPhone must be E.164 format (e.g. +12015551234)" });
+    }
+  }
+
   const patch = {};
   if (vehicleTiers !== undefined) patch.vehicleTiers = vehicleTiers;
   if (currency !== undefined) patch.currency = currency;
@@ -262,6 +271,9 @@ router.put("/config", requireRole("SUPER_ADMIN"), async (req, res) => {
   if (namedPlaces !== undefined) patch.namedPlaces = namedPlaces;
   if (zones !== undefined) patch.zones = zones;
   if (timeOfDaySurcharge !== undefined) patch.timeOfDaySurcharge = timeOfDaySurcharge;
+  if (whatsappEnabled !== undefined) patch.whatsappEnabled = Boolean(whatsappEnabled);
+  if (whatsappRecipientPhone !== undefined) patch.whatsappRecipientPhone = whatsappRecipientPhone;
+  if (whatsappRecipientName !== undefined) patch.whatsappRecipientName = whatsappRecipientName;
 
   const updated = await updateConfig(patch);
   res.json({
@@ -272,6 +284,9 @@ router.put("/config", requireRole("SUPER_ADMIN"), async (req, res) => {
     namedPlaces: updated.namedPlaces || [],
     zones: updated.zones || [],
     timeOfDaySurcharge: updated.timeOfDaySurcharge || [],
+    whatsappEnabled: updated.whatsappEnabled ?? false,
+    whatsappRecipientPhone: updated.whatsappRecipientPhone || "",
+    whatsappRecipientName: updated.whatsappRecipientName || "",
     updatedAt: updated.updatedAt,
   });
 });

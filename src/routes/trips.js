@@ -6,6 +6,7 @@ import { computeFare } from "../services/fare.js";
 import { detectTolls } from "../services/tollDetector.js";
 import { canTransition, STATES } from "../services/stateMachine.js";
 import { sendConfirmation } from "../services/mailer.js";
+import { sendTripNotification } from "../services/whatsapp.js";
 import { parseConsent } from "../services/consent.js";
 import { getConfig } from "../services/configRepo.js";
 
@@ -107,6 +108,7 @@ router.post("/", async (req, res) => {
     await updateTrip(trip.id, (t) => ({ ...t, notifiedAt: new Date().toISOString() }));
     trip.notifiedAt = new Date().toISOString();
     sendConfirmation(trip).catch((e) => console.error("[mail]", e));
+    sendTripNotification(trip).catch((e) => console.error("[whatsapp]", e));
   }
   res.json(trip);
 });
@@ -193,6 +195,7 @@ router.patch("/:id/state", async (req, res) => {
   if (to === STATES.CONFIRMED && !updated.notifiedAt) {
     const stamped = await updateTrip(updated.id, (t) => ({ ...t, notifiedAt: new Date().toISOString() }));
     sendConfirmation(stamped).catch((e) => console.error("[mail]", e));
+    sendTripNotification(stamped).catch((e) => console.error("[whatsapp]", e));
   }
   res.json(updated);
 });

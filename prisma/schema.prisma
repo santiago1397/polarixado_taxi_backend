@@ -125,8 +125,11 @@ model Config {
   namedPlaces         Json?    @default("null")
   zones               Json?    @default("null")
   timeOfDaySurcharge  Json?    @default("null")
-  tollRoads           Json?    @default("null")
-  updatedAt           DateTime @updatedAt
+  tollRoads              Json?    @default("null")
+  whatsappEnabled        Boolean  @default(false)
+  whatsappRecipientPhone String?
+  whatsappRecipientName  String?
+  updatedAt              DateTime @updatedAt
 }
 
 model Trip {
