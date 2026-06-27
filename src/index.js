@@ -61,6 +61,7 @@ app.get("/api/config", async (_req, res) => {
       zones: cfg.zones || [],
       timeOfDaySurcharge: cfg.timeOfDaySurcharge || [],
       crossingRules: cfg.crossingRules || [],
+      tollRoads: cfg.tollRoads || [],
     });
   } catch (e) {
     console.error("[config]", e);
