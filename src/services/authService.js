@@ -51,6 +51,9 @@ export function clearTokenCookie(res) {
   });
 }
 
+// Accepts both cookie and Authorization: Bearer. The Bearer fallback exists because
+// iOS Safari ITP drops cross-site SameSite=None cookies, so the admin frontend stores
+// the JWT and sends it as a header. Do not remove without restoring same-site hosting.
 export function getTokenFromRequest(req) {
   const fromCookie = req.cookies?.[COOKIE_NAME];
   const fromAuth = req.header("Authorization")?.replace("Bearer ", "");

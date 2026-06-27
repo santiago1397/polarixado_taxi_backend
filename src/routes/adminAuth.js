@@ -24,7 +24,7 @@ router.post("/login", async (req, res) => {
   setTokenCookie(res, token);
   console.log(`[adminAuth] /login OK id=${admin.id} role=${admin.role}`);
   const { passwordHash: _, ...adminInfo } = admin;
-  res.json(adminInfo);
+  res.json({ ...adminInfo, token });
 });
 
 router.post("/logout", (req, res) => {
