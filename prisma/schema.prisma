@@ -126,6 +126,7 @@ model Config {
   zones               Json?    @default("null")
   timeOfDaySurcharge  Json?    @default("null")
   tollRoads              Json?    @default("null")
+  crossingRules          Json?    @default("null")
   whatsappEnabled        Boolean  @default(false)
   whatsappRecipientPhone String?
   whatsappRecipientName  String?
@@ -158,6 +159,7 @@ model Trip {
   fareEwrSurcharge        Float         @default(0)
   fareTimeOfDaySurcharge  Float         @default(0)
   fareTollAmount          Float         @default(0)
+  fareCrossingSurcharge   Float         @default(0)
   fareTotal               Float
   fareCurrency            String        @default("USD")
   paymentMethod   PaymentMethod

@@ -1,6 +1,6 @@
 import "dotenv/config";
 import prisma from "../lib/prisma.js";
-import { DEFAULT_VEHICLE_TIERS } from "../config/defaultTiers.js";
+import { DEFAULT_VEHICLE_TIERS, DEFAULT_CROSSING_RULES } from "../config/defaultTiers.js";
 import { DEFAULT_TOLL_ROADS } from "./tollDetector.js";
 
 export async function getConfig() {
@@ -14,6 +14,7 @@ export async function getConfig() {
         zelleHandle: process.env.ZELLE_HANDLE || null,
         zelleName: process.env.ZELLE_NAME || null,
         tollRoads: DEFAULT_TOLL_ROADS,
+        crossingRules: DEFAULT_CROSSING_RULES,
       },
     });
   }
@@ -22,6 +23,13 @@ export async function getConfig() {
     row = await prisma.config.update({
       where: { id: "singleton" },
       data: { tollRoads: DEFAULT_TOLL_ROADS },
+    });
+  }
+  // Back-fill crossingRules on existing configs that predate this feature.
+  if (!row.crossingRules) {
+    row = await prisma.config.update({
+      where: { id: "singleton" },
+      data: { crossingRules: DEFAULT_CROSSING_RULES },
     });
   }
   return row;

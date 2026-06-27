@@ -7,6 +7,7 @@ import {
   DEFAULT_NAMED_PLACES,
   DEFAULT_ZONES,
   DEFAULT_TIME_OF_DAY_SURCHARGE,
+  DEFAULT_CROSSING_RULES,
 } from "../src/config/defaultTiers.js";
 
 const prisma = new PrismaClient();
@@ -39,6 +40,7 @@ async function main() {
       namedPlaces: DEFAULT_NAMED_PLACES,
       zones: DEFAULT_ZONES,
       timeOfDaySurcharge: DEFAULT_TIME_OF_DAY_SURCHARGE,
+      crossingRules: DEFAULT_CROSSING_RULES,
     },
     create: {
       id: "singleton",
@@ -49,6 +51,7 @@ async function main() {
       namedPlaces: DEFAULT_NAMED_PLACES,
       zones: DEFAULT_ZONES,
       timeOfDaySurcharge: DEFAULT_TIME_OF_DAY_SURCHARGE,
+      crossingRules: DEFAULT_CROSSING_RULES,
     },
   });
   console.log("Config singleton ensured.");

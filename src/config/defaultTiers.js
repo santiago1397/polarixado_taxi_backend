@@ -100,6 +100,20 @@ export const DEFAULT_ZONES = [
   { id: "NJ_OTHER", label: "New Jersey → Other", originState: "NJ", destinationState: "*", defaultTierRates: true },
 ];
 
+// Default crossing rules. Detection is longitude-based (mirrors tollDetector.js):
+// origin.lng < -74.0 (NJ) and destination.lng > -74.0 (NY).
+// When matched, the rule multiplies the listed fare components and the delta is
+// surfaced as its own breakdown line so the customer sees why the price is higher.
+export const DEFAULT_CROSSING_RULES = [
+  {
+    id: "NJ_TO_NY",
+    label: "NJ → NY Crossing",
+    multiplier: 2.0,
+    appliesTo: ["base", "perMile"],
+    active: true,
+  },
+];
+
 // Default time-of-day surcharge windows.
 // Each window is [startHour, endHour) in America/New_York. startHour is inclusive, endHour exclusive.
 export const DEFAULT_TIME_OF_DAY_SURCHARGE = [

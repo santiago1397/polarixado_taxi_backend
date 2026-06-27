@@ -125,6 +125,8 @@ router.get("/config", async (_req, res) => {
     namedPlaces: cfg.namedPlaces || [],
     zones: cfg.zones || [],
     timeOfDaySurcharge: cfg.timeOfDaySurcharge || [],
+    tollRoads: cfg.tollRoads || [],
+    crossingRules: cfg.crossingRules || [],
     whatsappEnabled: cfg.whatsappEnabled ?? false,
     whatsappRecipientPhone: cfg.whatsappRecipientPhone || "",
     whatsappRecipientName: cfg.whatsappRecipientName || "",
@@ -196,6 +198,53 @@ function validateZone(zone, i) {
   return null;
 }
 
+function validateTollRoad(road, i) {
+  if (!road || typeof road !== "object") return `tollRoads[${i}] must be an object`;
+  if (typeof road.id !== "string" || !road.id.trim()) return `tollRoads[${i}].id required`;
+  if (typeof road.label !== "string" || !road.label.trim()) return `tollRoads[${i}].label required`;
+  if (typeof road.flatFee !== "number" || !Number.isFinite(road.flatFee) || road.flatFee < 0) {
+    return `tollRoads[${i}].flatFee must be a non-negative number`;
+  }
+  if (typeof road.directionAware !== "boolean") return `tollRoads[${i}].directionAware must be a boolean`;
+  if (typeof road.radiusKm !== "number" || !Number.isFinite(road.radiusKm) || road.radiusKm <= 0) {
+    return `tollRoads[${i}].radiusKm must be a positive number`;
+  }
+  if (!Array.isArray(road.anchors) || road.anchors.length === 0) {
+    return `tollRoads[${i}].anchors must be a non-empty array`;
+  }
+  for (let j = 0; j < road.anchors.length; j++) {
+    const a = road.anchors[j];
+    if (!a || typeof a !== "object") return `tollRoads[${i}].anchors[${j}] must be an object`;
+    if (typeof a.lat !== "number" || !Number.isFinite(a.lat) || a.lat < -90 || a.lat > 90) {
+      return `tollRoads[${i}].anchors[${j}].lat must be a number in [-90, 90]`;
+    }
+    if (typeof a.lng !== "number" || !Number.isFinite(a.lng) || a.lng < -180 || a.lng > 180) {
+      return `tollRoads[${i}].anchors[${j}].lng must be a number in [-180, 180]`;
+    }
+  }
+  return null;
+}
+
+const CROSSING_APPLIES_TO = ["base", "perMile"];
+function validateCrossingRule(rule, i) {
+  if (!rule || typeof rule !== "object") return `crossingRules[${i}] must be an object`;
+  if (typeof rule.id !== "string" || !rule.id.trim()) return `crossingRules[${i}].id required`;
+  if (typeof rule.label !== "string" || !rule.label.trim()) return `crossingRules[${i}].label required`;
+  if (typeof rule.multiplier !== "number" || !Number.isFinite(rule.multiplier) || rule.multiplier <= 0) {
+    return `crossingRules[${i}].multiplier must be a positive number`;
+  }
+  if (!Array.isArray(rule.appliesTo) || rule.appliesTo.length === 0) {
+    return `crossingRules[${i}].appliesTo must be a non-empty array`;
+  }
+  for (let j = 0; j < rule.appliesTo.length; j++) {
+    if (!CROSSING_APPLIES_TO.includes(rule.appliesTo[j])) {
+      return `crossingRules[${i}].appliesTo[${j}] must be one of ${CROSSING_APPLIES_TO.join(", ")}`;
+    }
+  }
+  if (typeof rule.active !== "boolean") return `crossingRules[${i}].active must be a boolean`;
+  return null;
+}
+
 function validateTimeOfDayWindow(w, i) {
   if (!w || typeof w !== "object") return `timeOfDaySurcharge[${i}] must be an object`;
   if (typeof w.id !== "string" || !w.id.trim()) return `timeOfDaySurcharge[${i}].id required`;
@@ -207,7 +256,7 @@ function validateTimeOfDayWindow(w, i) {
 }
 
 router.put("/config", requireRole("SUPER_ADMIN"), async (req, res) => {
-  const { vehicleTiers, currency, zelleHandle, zelleName, namedPlaces, zones, timeOfDaySurcharge, whatsappEnabled, whatsappRecipientPhone, whatsappRecipientName } = req.body || {};
+  const { vehicleTiers, currency, zelleHandle, zelleName, namedPlaces, zones, timeOfDaySurcharge, tollRoads, crossingRules, whatsappEnabled, whatsappRecipientPhone, whatsappRecipientName } = req.body || {};
 
   if (vehicleTiers !== undefined) {
     if (typeof vehicleTiers !== "object" || vehicleTiers === null) {
@@ -257,6 +306,28 @@ router.put("/config", requireRole("SUPER_ADMIN"), async (req, res) => {
     }
   }
 
+  if (tollRoads !== undefined) {
+    if (!Array.isArray(tollRoads)) return res.status(400).json({ error: "tollRoads must be an array" });
+    const seen = new Set();
+    for (let i = 0; i < tollRoads.length; i++) {
+      const err = validateTollRoad(tollRoads[i], i);
+      if (err) return res.status(400).json({ error: err });
+      if (seen.has(tollRoads[i].id)) return res.status(400).json({ error: `tollRoads[${i}].id "${tollRoads[i].id}" is duplicated` });
+      seen.add(tollRoads[i].id);
+    }
+  }
+
+  if (crossingRules !== undefined) {
+    if (!Array.isArray(crossingRules)) return res.status(400).json({ error: "crossingRules must be an array" });
+    const seen = new Set();
+    for (let i = 0; i < crossingRules.length; i++) {
+      const err = validateCrossingRule(crossingRules[i], i);
+      if (err) return res.status(400).json({ error: err });
+      if (seen.has(crossingRules[i].id)) return res.status(400).json({ error: `crossingRules[${i}].id "${crossingRules[i].id}" is duplicated` });
+      seen.add(crossingRules[i].id);
+    }
+  }
+
   if (whatsappRecipientPhone !== undefined && whatsappRecipientPhone !== "") {
     if (!/^\+[1-9]\d{7,14}$/.test(whatsappRecipientPhone)) {
       return res.status(400).json({ error: "whatsappRecipientPhone must be E.164 format (e.g. +12015551234)" });
@@ -271,6 +342,8 @@ router.put("/config", requireRole("SUPER_ADMIN"), async (req, res) => {
   if (namedPlaces !== undefined) patch.namedPlaces = namedPlaces;
   if (zones !== undefined) patch.zones = zones;
   if (timeOfDaySurcharge !== undefined) patch.timeOfDaySurcharge = timeOfDaySurcharge;
+  if (tollRoads !== undefined) patch.tollRoads = tollRoads;
+  if (crossingRules !== undefined) patch.crossingRules = crossingRules;
   if (whatsappEnabled !== undefined) patch.whatsappEnabled = Boolean(whatsappEnabled);
   if (whatsappRecipientPhone !== undefined) patch.whatsappRecipientPhone = whatsappRecipientPhone;
   if (whatsappRecipientName !== undefined) patch.whatsappRecipientName = whatsappRecipientName;
@@ -284,6 +357,8 @@ router.put("/config", requireRole("SUPER_ADMIN"), async (req, res) => {
     namedPlaces: updated.namedPlaces || [],
     zones: updated.zones || [],
     timeOfDaySurcharge: updated.timeOfDaySurcharge || [],
+    tollRoads: updated.tollRoads || [],
+    crossingRules: updated.crossingRules || [],
     whatsappEnabled: updated.whatsappEnabled ?? false,
     whatsappRecipientPhone: updated.whatsappRecipientPhone || "",
     whatsappRecipientName: updated.whatsappRecipientName || "",

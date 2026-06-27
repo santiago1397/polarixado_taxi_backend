@@ -129,6 +129,39 @@ export function getTimeOfDaySurcharge(at, windows) {
   return { amount: Number(w.amount) || 0, windowId: w.id, label: w.label };
 }
 
+// ----- crossing surcharge (e.g. NJ→NY) -----
+
+// Detect NJ→NY using the same longitude heuristic as tollDetector.js:
+// NJ is west of the Hudson (lng < -74.0), NY is east (lng > -74.0).
+function isNJtoNY(origin, destination) {
+  const oLng = origin?.lng;
+  const dLng = destination?.lng;
+  if (typeof oLng !== "number" || typeof dLng !== "number") return false;
+  return oLng < -74.0 && dLng > -74.0;
+}
+
+// Apply the first active crossing rule that matches the trip's direction.
+// Returns { amount, label, ruleId } or null. The amount is the delta over the
+// base price (e.g. multiplier=2 on $20 → amount=$20), so callers add it on top.
+export function getCrossingSurcharge(origin, destination, base, perMileTotal, crossingRules) {
+  if (!Array.isArray(crossingRules) || crossingRules.length === 0) return null;
+  for (const rule of crossingRules) {
+    if (!rule || rule.active === false) continue;
+    const multiplier = Number(rule.multiplier);
+    if (!Number.isFinite(multiplier) || multiplier <= 1) continue;
+    const matches = rule.id === "NJ_TO_NY" && isNJtoNY(origin, destination);
+    if (!matches) continue;
+    const applies = Array.isArray(rule.appliesTo) ? rule.appliesTo : [];
+    const multiplied =
+      (applies.includes("base") ? base : 0) +
+      (applies.includes("perMile") ? perMileTotal : 0);
+    if (multiplied <= 0) return null;
+    const amount = Number((multiplied * (multiplier - 1)).toFixed(2));
+    return { amount, label: rule.label || "Crossing surcharge", ruleId: rule.id };
+  }
+  return null;
+}
+
 // ----- main entry point -----
 
 // Inputs:
@@ -148,6 +181,7 @@ export function computeFareBreakdown(input) {
     origin, destination,
     mode, scheduledAt, createdAt,
     zones, namedPlaces, timeOfDaySurcharge,
+    crossingRules,
     isDeal = false,
     currency = "USD",
     tollAmount = 0,
@@ -194,7 +228,12 @@ export function computeFareBreakdown(input) {
     ? Number(tollAmount.toFixed(2))
     : 0;
 
-  const total = Number((base + perMileTotal + ewrSurcharge + todSurcharge + toll).toFixed(2));
+  const crossing = !isDeal ? getCrossingSurcharge(origin, destination, base, perMileTotal, crossingRules) : null;
+  const crossingSurcharge = crossing ? crossing.amount : 0;
+  const crossingLabel = crossing ? crossing.label : null;
+  const crossingRuleId = crossing ? crossing.ruleId : null;
+
+  const total = Number((base + perMileTotal + ewrSurcharge + todSurcharge + toll + crossingSurcharge).toFixed(2));
 
   const breakdown = [
     { label: "Base", value: base },
@@ -202,6 +241,7 @@ export function computeFareBreakdown(input) {
   ];
   if (ewrSurcharge > 0 && ewrLabel) breakdown.push({ label: ewrLabel, value: ewrSurcharge });
   if (todSurcharge > 0 && todLabel) breakdown.push({ label: todLabel, value: todSurcharge });
+  if (crossingSurcharge > 0 && crossingLabel) breakdown.push({ label: crossingLabel, value: crossingSurcharge });
   if (toll > 0) breakdown.push({ label: "Tolls", value: toll });
   breakdown.push({ label: "Total", value: total, total: true });
 
@@ -211,6 +251,8 @@ export function computeFareBreakdown(input) {
     ewrSurcharge,
     timeOfDaySurcharge: todSurcharge,
     tollAmount: toll,
+    crossingSurcharge,
+    crossingRuleId,
     total,
     currency,
     bandRate: Number(band.perMile) || 0,

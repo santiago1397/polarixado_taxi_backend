@@ -48,6 +48,7 @@ router.post("/", async (req, res) => {
     zones: cfg.zones,
     namedPlaces: cfg.namedPlaces,
     timeOfDaySurcharge: cfg.timeOfDaySurcharge,
+    crossingRules: cfg.crossingRules,
     isDeal: false,
     currency: cfg.currency,
     tollAmount,

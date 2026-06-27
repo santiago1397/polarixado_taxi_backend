@@ -60,6 +60,7 @@ app.get("/api/config", async (_req, res) => {
       namedPlaces: cfg.namedPlaces || [],
       zones: cfg.zones || [],
       timeOfDaySurcharge: cfg.timeOfDaySurcharge || [],
+      crossingRules: cfg.crossingRules || [],
     });
   } catch (e) {
     console.error("[config]", e);

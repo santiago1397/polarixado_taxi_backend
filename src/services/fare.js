@@ -11,6 +11,8 @@ export function computeFare(input) {
     ewrSurcharge: r.ewrSurcharge,
     timeOfDaySurcharge: r.timeOfDaySurcharge,
     tollAmount: r.tollAmount,
+    crossingSurcharge: r.crossingSurcharge,
+    crossingRuleId: r.crossingRuleId,
     total: r.total,
     currency: r.currency,
     breakdown: r.breakdown,
