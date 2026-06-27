@@ -1,5 +1,9 @@
 // Geofencing-based toll detection. No external API — uses anchor points and
 // Haversine proximity checks against the trip's Mapbox route GeoJSON.
+//
+// The frontend mirrors this algorithm in frontend/src/lib/fare.js (detectTolls)
+// to preview tolls in the fare card. If you change the algorithm here, update
+// the mirror too. Toll data lives in Config.tollRoads (admin-editable), not here.
 
 function haversineKm(a, b) {
   if (a?.lat == null || a?.lng == null || b?.lat == null || b?.lng == null) return Infinity;
